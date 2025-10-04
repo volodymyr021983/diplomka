@@ -1,0 +1,5 @@
+CREATE TABLE user_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(255) UNIQUE NOT NULL
+);
