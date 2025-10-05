@@ -9,9 +9,25 @@ import (
 	"test/discord/db"
 	"test/discord/db/models"
 
+	"github.com/olahol/melody"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 )
 
+func DeleteServer(m *melody.Melody, dbContainer *db.DbContainer) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server_id := r.PathValue("server_id")
+
+		channels.WSDisconnectFromAllChannels(m, server_id, dbContainer)
+		err := deleteServer(server_id, dbContainer)
+
+		if err != nil {
+			w.WriteHeader(404)
+			return
+		}
+		w.WriteHeader(200)
+
+	})
+}
 func CreateServer(dbContainer *db.DbContainer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application-json")
@@ -27,19 +43,25 @@ func CreateServer(dbContainer *db.DbContainer) http.HandlerFunc {
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			w.WriteHeader(500)
+			w.WriteHeader(400)
 			fmt.Println("error during reading body r")
 			return
 		}
 
 		err = json.Unmarshal(body, &server_name)
 		if err != nil {
-			w.WriteHeader(500)
+			w.WriteHeader(400)
 			fmt.Println("error during unmarshaling body r")
 			return
 		}
 
 		userID := sessionContainer.GetUserID()
+
+		serversCount := GetUserServersCount(userID, dbContainer)
+		if serversCount >= 5 {
+			w.WriteHeader(403)
+			return
+		}
 		new_server := models.Servers{ServerId: *server_id, Servername: server_name.Servername, OwnerId: userID}
 
 		err = CreateNewServer(&new_server, dbContainer)

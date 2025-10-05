@@ -7,6 +7,7 @@ import (
 	"test/discord/db/models"
 
 	"github.com/google/uuid"
+	"github.com/olahol/melody"
 )
 
 func CreateTextChannel(channelModel models.Channels, dbContainer *db.DbContainer) error {
@@ -51,7 +52,6 @@ func GetFirstChannel(server_id string, dbContainer *db.DbContainer) (*string, er
 	}
 	return &channel.ChannelId, nil
 }
-
 func GetServerChannels(server_id string, dbContainer *db.DbContainer) []channelsResponse {
 	var channels []channelsResponse
 
@@ -72,6 +72,57 @@ func getUserUsernameUsingId(user_id string, dbContainer *db.DbContainer) *string
 		return nil
 	}
 	return &UserProfile.Username
+}
+func deleteChannel(channel models.Channels, m *melody.Melody, dbContainer *db.DbContainer) error {
+	serverChannels := getChannelCount(channel.OwnServerId, dbContainer)
+	if serverChannels[channel.ChannelType] <= 1 {
+		return errors.New("must be at least 1 channel")
+	}
+	WSDisconnectAllChannelSession(m, channel.ChannelId)
+	result := dbContainer.DB.Delete(&channel)
+	if result.RowsAffected != 1 {
+		return errors.New("unexpected error")
+	}
+	return nil
+}
+func getChannelCount(server_id string, dbContainer *db.DbContainer) map[string]int {
+	var channels []models.Channels
+	dbContainer.DB.Find(&channels, "own_server_id = ?", server_id)
+	var textChannelsCount int
+	var voiceChannelsCount int
+
+	for _, channel := range channels {
+		if channel.ChannelType == "text" {
+			textChannelsCount++
+		} else {
+			voiceChannelsCount++
+		}
+	}
+	return map[string]int{"text": textChannelsCount, "voice": voiceChannelsCount}
+}
+func WSDisconnectAllChannelSession(m *melody.Melody, channel_id string) error {
+	sessions, err := m.Sessions()
+
+	if err != nil {
+		return errors.New("unexpected error")
+	}
+	for _, session := range sessions {
+		ses_channel, _ := session.Get("channel_id")
+		if ses_channel == channel_id {
+			session.Close()
+		}
+	}
+	return nil
+}
+func WSDisconnectFromAllChannels(m *melody.Melody, server_id string, dbContainer *db.DbContainer) error {
+	channels := GetServerChannels(server_id, dbContainer)
+	for _, channel := range channels {
+		err := WSDisconnectAllChannelSession(m, channel.ChannelId)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type channelsResponse struct {

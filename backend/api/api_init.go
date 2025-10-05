@@ -32,6 +32,10 @@ func Api_init(m *melody.Melody, mux *http.ServeMux, dbContainer *db.DbContainer)
 	mux.HandleFunc("GET /api/server/invite/{server_id}", session.VerifySession(nil, middleware.ValidateConnectionToServer(middleware.ValidateServerOwner(servers.CreateInviteLink(dbContainer), dbContainer), dbContainer)))
 	mux.HandleFunc("GET /api/server/invite/token/{invite_code}", session.VerifySession(nil, servers.AcceptInvitation(dbContainer)))
 	mux.HandleFunc("GET /api/server/get-server-channel/{server_id}", session.VerifySession(nil, middleware.ValidateConnectionToServer(channels.GetFirstChannelHandler(dbContainer), dbContainer)))
+	mux.HandleFunc("POST /api/server/delete-channel/{server_id}", session.VerifySession(nil, middleware.ValidateConnectionToServer(
+		middleware.ValidateServerOwner(channels.DeleteChannel(dbContainer, m), dbContainer), dbContainer)))
+	mux.HandleFunc("GET /api/server/delete-server/{server_id}", session.VerifySession(nil, middleware.ValidateConnectionToServer(
+		middleware.ValidateServerOwner(servers.DeleteServer(m, dbContainer), dbContainer), dbContainer)))
 	//melody package init if have time will be replaced with low level coder(nhooyr) WEBSOCKETS
 	m.HandleMessage(channels.WSHandleMessage(m))
 

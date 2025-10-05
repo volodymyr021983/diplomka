@@ -59,6 +59,12 @@ func GetUserServers(user_id string, dbContainer *db.DbContainer) ([]GetServersRe
 	}
 	return servers, nil
 }
+func GetUserServersCount(user_id string, dbContainer *db.DbContainer) int {
+	var servers []models.Servers
+	dbContainer.DB.Find(&servers, "owner_id = ?", user_id)
+
+	return len(servers)
+}
 
 func IsMember(user_id string, server_id string, dbContainer *db.DbContainer) bool {
 	var server_member models.ServerMembers
@@ -143,6 +149,14 @@ func AddNewUser(server_member models.ServerMembers, dbContainer *db.DbContainer)
 	if result.RowsAffected != 1 {
 		return errors.New("unexpected error occurs")
 	}
+	return nil
+}
+func deleteServer(server_id string, dbContainer *db.DbContainer) error {
+	server := FindServerById(server_id, dbContainer)
+	if server == nil {
+		return errors.New("server does not exists")
+	}
+	dbContainer.DB.Delete(&server)
 	return nil
 }
 

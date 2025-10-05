@@ -66,6 +66,46 @@ func WSHandleMessage(m *melody.Melody) func(s *melody.Session, msg []byte) {
 		s.Set("channel_id", channel_id)
 	}
 */
+func DeleteChannel(dbContainer *db.DbContainer, m *melody.Melody) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		byteBody, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(400)
+		}
+		type requestBody struct {
+			Channel_id string
+		}
+		var reqBody requestBody
+		err = json.Unmarshal(byteBody, &reqBody)
+		if err != nil {
+			w.WriteHeader(400)
+			return
+		}
+		channel := FindChannelById(reqBody.Channel_id, dbContainer)
+		if channel == nil {
+			w.WriteHeader(404)
+			return
+		}
+		server_id := r.PathValue("server_id")
+		if channel.OwnServerId != server_id {
+			w.WriteHeader(403)
+			return
+		}
+
+		err = deleteChannel(*channel, m, dbContainer)
+		if err != nil {
+			w.WriteHeader(403)
+			responseBody, err := json.Marshal(map[string]string{"Error": err.Error()})
+			if err != nil {
+				w.WriteHeader(500)
+				return
+			}
+			w.Write(responseBody)
+			return
+		}
+		w.WriteHeader(200)
+	})
+}
 func CreateChannel(dbContainer *db.DbContainer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		//sessionContainer := session.GetSessionFromRequestContext(r.Context())
@@ -90,6 +130,13 @@ func CreateChannel(dbContainer *db.DbContainer) http.Handler {
 
 		channel_id, err := GetNewChannelId(dbContainer)
 		server_id := r.PathValue("server_id")
+
+		channels_count := getChannelCount(server_id, dbContainer)
+
+		if channels_count[channelBody.ChannelType] >= 5 {
+			w.WriteHeader(403)
+			return
+		}
 
 		if err != nil {
 			w.WriteHeader(409)

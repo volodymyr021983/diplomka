@@ -8,12 +8,12 @@
             <fieldset class="fieldset">
             <legend>Channel type:</legend>
             <label>
-            <input v-model="channelType" type="radio" value="Text" />
+            <input v-model="channelType" type="radio" value="text" />
             Text
             </label><br>
 
             <label>
-            <input v-model="channelType" type="radio" value="Voice"  />
+            <input v-model="channelType" type="radio" value="voice"  />
             Voice
             </label>
             </fieldset>

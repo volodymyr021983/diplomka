@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+    <button class="primary-btn" @click="DeleteServer">DeleteServer</button>
     <button class="primary-btn" @click="showPopUp = !showPopUp">Create Channel</button>
     <CreateChannelComponent 
       :visible="showPopUp" 
@@ -19,6 +20,7 @@
         <button @click="Redirect(channel.ChannelId)" class="server-btn">
           {{ channel.Channelname }}
         </button>
+        <button @click="DeleteChannel(channel.ChannelId)">Delete Channel</button>
       </li>
     </ul>
     
@@ -57,7 +59,33 @@ async function CloseConnIfExists() {
     ws.send("CONNECTION CLOSED")
   }
 }
-
+async function DeleteServer(){
+  try{
+  const response = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/server/delete-server/${serverId}`,{
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    })
+    if(response.ok){
+      console.log("deleted!")
+    }
+  }catch(err){
+    alert(err)
+  }
+}
+async function DeleteChannel(ChannelId){
+  try{
+    console.log(ChannelId)
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/server/delete-channel/${serverId}`,{
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        Channel_id: ChannelId
+      })
+    })
+  }catch(err){
+    alert(err)
+  }
+}
 async function Redirect(ChannelId) {
   router.push(`/server/${serverId}/${ChannelId}`)
   chat.value.innerText = ''
