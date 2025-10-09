@@ -94,7 +94,7 @@ async function Redirect(ChannelId) {
 }
 
 async function ConnectToChannel(ChannelId) {
-  const wsUri = `ws://localhost:8080/api/server/connect/${serverId}/${ChannelId}`
+  const wsUri = `${import.meta.env.VITE_WSS_API_URL}/api/server/connect/${serverId}/${ChannelId}`
   ws = new WebSocket(wsUri);
   ws.addEventListener("message", (e) => {
     chat.value.innerText += e.data + "\n";
