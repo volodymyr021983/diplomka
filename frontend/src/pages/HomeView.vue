@@ -4,6 +4,7 @@
 <button class="sign-up-btn" @click="Redirect">Redirect to Test</button>
 <button class="sign-up-btn" @click="SignIn">Redirect to SignIn</button>
 <button class="sign-up-btn" @click="CreateServer">Redirect to CreateServer</button>
+<button class="sign-up-btn" @click="ResetPassword">Redirect to ResetPassword</button>
 <button type="submit" class="sign-up-btn" @click="GetUserServers">get Servers</button>
 <ul v-if="isSessionExists && isServersExists">
     <li v-for="(server, index) in servers" :key="index">
@@ -65,6 +66,9 @@ async function SignIn(){
 }
 async function CreateServer(){
     window.location.href = "/server/create"
+}
+async function ResetPassword(){
+    window.location.href = "/auth/reset-password"
 }
 async function RedirectToServer(ServerId){
     const channel_id = ref('')

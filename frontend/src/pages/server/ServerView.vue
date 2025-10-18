@@ -17,8 +17,8 @@
    
     <ul class="channel-list">
       <li v-for="(channel, index) in channels" :key="index">
-        <button @click="Redirect(channel.ChannelId)" class="server-btn">
-          {{ channel.Channelname }}
+        <button @click="Redirect(channel.ChannelId,channel.ChannelType)" class="server-btn">
+          {{ channel.Channelname}},{{channel.ChannelType}}
         </button>
         <button @click="DeleteChannel(channel.ChannelId)">Delete Channel</button>
       </li>
@@ -49,6 +49,10 @@ let ws = null
 const serverId = route.params.server_id
 const channelId = route.params.channel_id
 
+//webRTC
+const subscribers = {}
+
+
 async function Sending() {
   ws.send(inputText.value)
 }
@@ -75,7 +79,7 @@ async function DeleteServer(){
 async function DeleteChannel(ChannelId){
   try{
     console.log(ChannelId)
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/server/delete-channel/${serverId}`,{
+    await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/server/delete-channel/${serverId}`,{
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -86,19 +90,26 @@ async function DeleteChannel(ChannelId){
     alert(err)
   }
 }
-async function Redirect(ChannelId) {
+async function Redirect(ChannelId,channelType) {
+  if(channelType == "voice"){
+     window.location.href = `/server/voice/${serverId}/${ChannelId}`
+     CloseConnIfExists(ws)
+
+  }
+  else{
   router.push(`/server/${serverId}/${ChannelId}`)
   chat.value.innerText = ''
   CloseConnIfExists(ws)
   ConnectToChannel(ChannelId)
+  }
 }
 
 async function ConnectToChannel(ChannelId) {
   const wsUri = `${import.meta.env.VITE_WSS_API_URL}/api/server/connect/${serverId}/${ChannelId}`
   ws = new WebSocket(wsUri);
-  ws.addEventListener("message", (e) => {
-    chat.value.innerText += e.data + "\n";
-    if(e.data == "close") ws.close()
+  ws.addEventListener("message", (event) => {
+    chat.value.innerText += event.data + "\n";
+
   })
 }
 
