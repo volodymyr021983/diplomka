@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"test/discord/api/channels"
 	"test/discord/api/servers"
+	"test/discord/api/signaling"
 	"test/discord/db"
 
 	"test/discord/middleware"
@@ -36,6 +37,8 @@ func Api_init(m *melody.Melody, mux *http.ServeMux, dbContainer *db.DbContainer)
 		middleware.ValidateServerOwner(channels.DeleteChannel(dbContainer, m), dbContainer), dbContainer)))
 	mux.HandleFunc("GET /api/server/delete-server/{server_id}", session.VerifySession(nil, middleware.ValidateConnectionToServer(
 		middleware.ValidateServerOwner(servers.DeleteServer(m, dbContainer), dbContainer), dbContainer)))
+	mux.HandleFunc("GET /api/signaling/{server_id}/{channel_id}", session.VerifySession(nil, middleware.ValidateConnectionToServer(
+		middleware.ValidateConnectionToChannel(signaling.AcceptConnection(), dbContainer), dbContainer)))
 	//melody package init if have time will be replaced with low level coder(nhooyr) WEBSOCKETS
 	m.HandleMessage(channels.WSHandleMessage(m))
 
