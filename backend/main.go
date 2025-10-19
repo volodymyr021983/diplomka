@@ -32,6 +32,6 @@ func main() {
 	m := melody.New()
 
 	api.Api_init(m, mux, dbContainer)
-	http.ListenAndServeTLS(":443", "./certificate/localhost+2.pem", "./certificate/localhost+2-key.pem", middleware.CORS(supertokens.Middleware(mux)))
+	http.ListenAndServeTLS(":443", "./certificate/localhost+3.pem", "./certificate/localhost+3-key.pem", middleware.CORS(supertokens.Middleware(mux)))
 
 }

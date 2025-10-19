@@ -17,7 +17,7 @@
    
     <ul class="channel-list">
       <li v-for="(channel, index) in channels" :key="index">
-        <button @click="Redirect(channel.ChannelId)" class="server-btn">
+        <button @click="Redirect(channel.ChannelId, channel.ChannelType)" class="server-btn">
           {{ channel.Channelname }}
         </button>
         <button @click="DeleteChannel(channel.ChannelId)">Delete Channel</button>
@@ -86,7 +86,11 @@ async function DeleteChannel(ChannelId){
     alert(err)
   }
 }
-async function Redirect(ChannelId) {
+async function Redirect(ChannelId, ChannelType) {
+  if(ChannelType == "voice"){
+    window.location.href = `/server/voice/${serverId}/${ChannelId}`
+    return
+  }
   router.push(`/server/${serverId}/${ChannelId}`)
   chat.value.innerText = ''
   CloseConnIfExists(ws)

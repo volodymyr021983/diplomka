@@ -11,6 +11,7 @@ import CreateServerView from './pages/server/CreateServerView.vue'
 import ServerView from './pages/server/ServerView.vue'
 import NotFoundView from './pages/NotFoundView.vue'
 import AcceptInvitationView from './pages/server/AcceptInvitationView.vue'
+import AudioChannelView from './pages/server/AudioChannelView.vue'
 import Session from "supertokens-web-js/recipe/session"
 
 
@@ -98,6 +99,12 @@ const routes = [
         path: "/server/invite/:invite_code",
         name: "invite",
         component: AcceptInvitationView,
+        beforeEnter: requiredAuth
+    },
+    {
+        path: "/server/voice/:server_id/:channel_id",
+        name: "voice",
+        component: AudioChannelView,
         beforeEnter: requiredAuth
     }
 
