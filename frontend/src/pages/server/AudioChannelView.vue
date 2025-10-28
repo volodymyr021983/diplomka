@@ -18,8 +18,11 @@ const localClientStream = ref(null)
 const serverID = route.params.server_id
 const channelID = route.params.channel_id
 
-const wsSignalingConn = new WebSocket(`${import.meta.env.VITE_WSS_API_URL}/api/signaling/${serverID}/${channelID}`)
+const PeerConnection = ref(null)
+const offer = ref(null)
 
+const wsSignalingConn = new WebSocket(`${import.meta.env.VITE_WSS_API_URL}/api/signaling/${serverID}/${channelID}`)
+//very important listener where code will process the messages from signaling server as offer answer etc
 wsSignalingConn.addEventListener("message", (event) =>{
   console.log(event.data)
   const msg = JSON.parse(event.data)
@@ -32,9 +35,35 @@ wsSignalingConn.addEventListener("message", (event) =>{
    
   }
 })
+
+//function responsible for RTCPeerConnection creation, adding tracks
+async function CreatePeerConnection(){
+  PeerConnection.value = new RTCPeerConnection({iceServers:[{
+    urls:[
+      'stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302'
+    ]
+  }]})
+  await GetUserMedia()
+ 
+  localClientStream.value.getTracks().forEach(track =>{
+    PeerConnection.value.addTrack(track, localClientStream.value)
+  })
+  //listener for responsible for sending ice candidates to the signalling server
+  PeerConnection.value.addEventListener("icecandidate", (event)=>{
+    console.log("icecandidate found!")
+    wsSignalingConn.send(JSON.stringify({type: 'new_ice_candidate', payload: event.candidate}))
+  })
+  PeerConnection.value.addEventListener("iceconnectionstatechange", (event)=>{
+    console.log(`icecandidate state change: ${event.iceConnectionState}`)
+  })
+  PeerConnection.value.addEventListener("connectionstatechange", (event)=>{
+    console.log(`connection state change: ${event.connectionState}`)
+  })
+}
 async function GetClients() {
   wsSignalingConn.send(JSON.stringify({ type: 'get_clients'}));
 }
+//function responsible for fetching user devises such as microphone and camera
 async function GetUserMedia() {
   try {
     localClientStream.value = await navigator.mediaDevices.getUserMedia({ video: true })
@@ -50,13 +79,19 @@ async function GetUserMedia() {
 
 async function ConnectToVoice(){
     try{
-    await GetUserMedia()
+    await CreatePeerConnection()
+       offer.value = await PeerConnection.value.createOffer()
+       await PeerConnection.value.setLocalDescription(offer.value)
+       sendOffer()
         sendJoinRequest();
     }catch(err){
-        alert("Oopssomthing wrong")
+        alert(err)
     }
 }
-
+async function sendOffer(){
+    console.log("sending offer");
+    wsSignalingConn.send(JSON.stringify({ type: 'conn_offer', payload: offer.value}));
+}
 async function sendJoinRequest(){
   console.log("Sending join_room request");
     wsSignalingConn.send(JSON.stringify({ type: 'join_channel'}));

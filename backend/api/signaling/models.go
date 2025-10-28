@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/coder/websocket"
+	"github.com/pion/webrtc/v3"
 )
 
 type ExistingChannels struct {
@@ -15,6 +16,8 @@ type Client struct {
 	user_id    string
 	ws_conn    *websocket.Conn
 	is_ws_conn bool
+	RTCcons    map[string]*webrtc.PeerConnection
+	mu         sync.Mutex
 }
 type Channel struct {
 	channel_id string

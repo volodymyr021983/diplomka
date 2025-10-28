@@ -2,10 +2,12 @@ package signaling
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/coder/websocket"
+	"github.com/pion/webrtc/v3"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 )
 
@@ -59,10 +61,19 @@ func AcceptConnection() http.Handler {
 				fmt.Println("web socket connection established")
 				client.is_ws_conn = true
 			case "join_channel":
-				JoinRoom(channel_id, client)
+				JoinRoom(channel_id, &client)
 			case "get_clients":
 				GetClients(channel_id)
+			case "new_ice_candidate":
+				var iceCandidate webrtc.ICECandidate
+				json.Unmarshal(signalMsg.Payload, &iceCandidate)
+				AddIceCandidate(&iceCandidate, &client)
+			case "conn_offer":
+				var offer webrtc.SessionDescription
+				json.Unmarshal(signalMsg.Payload, &offer)
+				handleClientOffer(offer, &client)
 			}
+
 		}
 	})
 }

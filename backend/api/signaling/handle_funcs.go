@@ -2,7 +2,7 @@ package signaling
 
 import "fmt"
 
-func JoinRoom(channel_id string, client Client) {
+func JoinRoom(channel_id string, client *Client) {
 	existingChannels.mu.Lock()
 	defer existingChannels.mu.Unlock()
 
