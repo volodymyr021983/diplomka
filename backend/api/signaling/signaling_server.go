@@ -30,12 +30,13 @@ func AcceptConnection() http.Handler {
 			user_id:    user_id,
 			ws_conn:    client_conn,
 			is_ws_conn: false,
+			RTCcons:    make(map[string]*webrtc.PeerConnection),
 		}
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		marshaled, _ := MarshalSignalingMsg("connected", ConnectedPayload{
+		marshaled, _ := MarshalSignalingMsg("connected", nil, ConnectedPayload{
 			User_id: client.user_id,
 		})
 		client.ws_conn.Write(ctx, 1, *marshaled)
@@ -65,13 +66,13 @@ func AcceptConnection() http.Handler {
 			case "get_clients":
 				GetClients(channel_id)
 			case "new_ice_candidate":
-				var iceCandidate webrtc.ICECandidate
+				var iceCandidate webrtc.ICECandidateInit
 				json.Unmarshal(signalMsg.Payload, &iceCandidate)
-				AddIceCandidate(&iceCandidate, &client)
+				AddIceCandidate(&iceCandidate, *signalMsg.UserID, &client)
 			case "conn_offer":
 				var offer webrtc.SessionDescription
 				json.Unmarshal(signalMsg.Payload, &offer)
-				handleClientOffer(offer, &client)
+				handleClientOffer(offer, user_id, &client)
 			}
 
 		}

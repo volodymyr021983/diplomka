@@ -4,6 +4,9 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func AddIceCandidate(iceCandidate *webrtc.ICECandidate, client *Client) {
-
+func AddIceCandidate(iceCandidate *webrtc.ICECandidateInit, candidate_userid string, client *Client) {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	conn := client.RTCcons[candidate_userid]
+	conn.AddICECandidate(*iceCandidate)
 }

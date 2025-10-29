@@ -26,6 +26,7 @@ type Channel struct {
 }
 type SignalingMsg struct {
 	MsgType string          `json:"type"`
+	UserID  *string         `json:"userid,omitempty"`
 	Payload json.RawMessage `json:"payload,omitempty"`
 }
 type ConnectedPayload struct {

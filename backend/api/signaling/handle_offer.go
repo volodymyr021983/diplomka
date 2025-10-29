@@ -6,7 +6,7 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func handleClientOffer(offer webrtc.SessionDescription, client *Client) {
+func handleClientOffer(offer webrtc.SessionDescription, peerKey string, client *Client) {
 
 	serverPeerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
@@ -18,7 +18,7 @@ func handleClientOffer(offer webrtc.SessionDescription, client *Client) {
 		fmt.Println("error while setting remote description")
 		return
 	}
-	err = client.addPeerConnection(serverPeerConnection, "server")
+	err = client.addPeerConnection(serverPeerConnection, peerKey)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -32,7 +32,7 @@ func handleClientOffer(offer webrtc.SessionDescription, client *Client) {
 		return
 	}
 	serverPeerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
-		signalMsg, err := MarshalSignalingMsg("new_ice_candidate", candidate)
+		signalMsg, err := MarshalSignalingMsg("new_ice_candidate", &client.user_id, candidate)
 		if err != nil {
 			fmt.Println("error during candidate marshaling")
 		}
@@ -41,7 +41,7 @@ func handleClientOffer(offer webrtc.SessionDescription, client *Client) {
 
 	serverPeerConnection.SetLocalDescription(serverAnswer)
 
-	signalMsg, err := MarshalSignalingMsg("conn_answer", serverAnswer)
+	signalMsg, err := MarshalSignalingMsg("conn_answer", nil, serverAnswer)
 	if err != nil {
 		fmt.Println("error during marshaling answer")
 		return

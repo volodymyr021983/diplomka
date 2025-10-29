@@ -10,6 +10,8 @@
 <script setup lang="js">
 import {ref} from 'vue'
 import { useRoute } from 'vue-router'
+import Session from 'supertokens-web-js/recipe/session';
+
 const route = useRoute()
 
 const clientVideoElement = ref(null)
@@ -17,14 +19,15 @@ const localClientStream = ref(null)
 
 const serverID = route.params.server_id
 const channelID = route.params.channel_id
+const userId = ref('')
 
 const PeerConnection = ref(null)
 const offer = ref(null)
+const channelPeerConnections = new Map()
 
 const wsSignalingConn = new WebSocket(`${import.meta.env.VITE_WSS_API_URL}/api/signaling/${serverID}/${channelID}`)
 //very important listener where code will process the messages from signaling server as offer answer etc
-wsSignalingConn.addEventListener("message", (event) =>{
-  console.log(event.data)
+wsSignalingConn.addEventListener("message", async (event) =>{
   const msg = JSON.parse(event.data)
   switch(msg.type){
    
@@ -32,7 +35,24 @@ wsSignalingConn.addEventListener("message", (event) =>{
       wsSignalingConn.send(JSON.stringify({type: "connected"}))
       console.log("websocket connected")
       break;
-   
+    case "new_ice_candidate":
+      if(msg.payload != null){
+      const arrivedUserId = msg.userid
+      console.log("ice candidate from:", arrivedUserId)
+      if (channelPeerConnections.has(arrivedUserId)) {
+        const pc = channelPeerConnections.get(arrivedUserId);
+        await pc.addIceCandidate(msg.payload);
+      } else {
+        console.log("not found PC for this candidate")
+      }        
+    }
+      break;
+    case "conn_answer":
+      console.log("payload:")
+      console.log(msg.payload)
+      const answer = new RTCSessionDescription(msg.payload)
+      await PeerConnection.value.setRemoteDescription(answer)
+      break;
   }
 })
 
@@ -44,20 +64,22 @@ async function CreatePeerConnection(){
     ]
   }]})
   await GetUserMedia()
- 
+
+  channelPeerConnections.set(userId.value, PeerConnection.value)
+
   localClientStream.value.getTracks().forEach(track =>{
     PeerConnection.value.addTrack(track, localClientStream.value)
   })
   //listener for responsible for sending ice candidates to the signalling server
   PeerConnection.value.addEventListener("icecandidate", (event)=>{
     console.log("icecandidate found!")
-    wsSignalingConn.send(JSON.stringify({type: 'new_ice_candidate', payload: event.candidate}))
+    wsSignalingConn.send(JSON.stringify({type: 'new_ice_candidate', userid: userId.value, payload: event.candidate}))
   })
   PeerConnection.value.addEventListener("iceconnectionstatechange", (event)=>{
-    console.log(`icecandidate state change: ${event.iceConnectionState}`)
+    console.log(`icecandidate state change: ${PeerConnection.value.iceConnectionState}`)
   })
   PeerConnection.value.addEventListener("connectionstatechange", (event)=>{
-    console.log(`connection state change: ${event.connectionState}`)
+    console.log(`connection state change: ${PeerConnection.value.connectionState}`)
   })
 }
 async function GetClients() {
@@ -79,6 +101,7 @@ async function GetUserMedia() {
 
 async function ConnectToVoice(){
     try{
+    userId.value = await Session.getUserId()
     await CreatePeerConnection()
        offer.value = await PeerConnection.value.createOffer()
        await PeerConnection.value.setLocalDescription(offer.value)

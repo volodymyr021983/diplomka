@@ -10,13 +10,14 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func MarshalSignalingMsg(msgType string, payload interface{}) (*[]byte, error) {
+func MarshalSignalingMsg(msgType string, user_id *string, payload interface{}) (*[]byte, error) {
 	payloadMarshal, err := json.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("error while marshaling payload")
 	}
 	result, err := json.Marshal(SignalingMsg{
 		MsgType: msgType,
+		UserID:  user_id,
 		Payload: payloadMarshal,
 	})
 
