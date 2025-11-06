@@ -16,13 +16,19 @@ type Client struct {
 	user_id    string
 	ws_conn    *websocket.Conn
 	is_ws_conn bool
-	RTCcons    map[string]*webrtc.PeerConnection
+	PCconn     *webrtc.PeerConnection
 	mu         sync.Mutex
 }
+type trackForwarder struct {
+	remoteTrack *webrtc.TrackRemote
+	localTracks []*webrtc.TrackLocalStaticRTP
+	mu          sync.RWMutex
+}
 type Channel struct {
-	channel_id string
-	users      map[string]*Client
-	mu         sync.Mutex
+	channel_id            string
+	users                 map[string]*Client
+	remoteTrackForwarders map[string]*trackForwarder
+	mu                    sync.Mutex
 }
 type SignalingMsg struct {
 	MsgType string          `json:"type"`

@@ -1,6 +1,7 @@
 <template>
 
 <video ref="clientVideoElement" autoplay controls width="320" height="240"></video>
+<video ref="serverVideoElement" autoplay controls width="320" height="240"></video>
 
 <button @click="ConnectToVoice">CONNECT</button>
 <button @click="GetClients">GETCLIENTS</button>
@@ -14,6 +15,7 @@ import Session from 'supertokens-web-js/recipe/session';
 
 const route = useRoute()
 
+const serverVideoElement = ref(null)
 const clientVideoElement = ref(null)
 const localClientStream = ref(null)
 
@@ -23,6 +25,7 @@ const userId = ref('')
 
 const PeerConnection = ref(null)
 const offer = ref(null)
+const answer = ref(null)
 const channelPeerConnections = new Map()
 
 const wsSignalingConn = new WebSocket(`${import.meta.env.VITE_WSS_API_URL}/api/signaling/${serverID}/${channelID}`)
@@ -50,8 +53,17 @@ wsSignalingConn.addEventListener("message", async (event) =>{
     case "conn_answer":
       console.log("payload:")
       console.log(msg.payload)
-      const answer = new RTCSessionDescription(msg.payload)
-      await PeerConnection.value.setRemoteDescription(answer)
+      const answerOf = new RTCSessionDescription(msg.payload)
+      await PeerConnection.value.setRemoteDescription(answerOf)
+      break;
+    case "conn_offer":
+      console.log("offer received payload:")
+
+      const offerAns = new RTCSessionDescription(msg.payload)
+      await PeerConnection.value.setRemoteDescription(offerAns)
+       answer.value = await PeerConnection.value.createAnswer()
+      await PeerConnection.value.setLocalDescription(answer.value)
+      sendAnswer()
       break;
   }
 })
@@ -81,6 +93,16 @@ async function CreatePeerConnection(){
   PeerConnection.value.addEventListener("connectionstatechange", (event)=>{
     console.log(`connection state change: ${PeerConnection.value.connectionState}`)
   })
+  PeerConnection.value.addEventListener("negotiationneeded", (event)=>{
+    console.log(`negotiation needed`)
+  })
+  PeerConnection.value.addEventListener("track", (event) =>{
+    console.log("track arrived")
+     console.log("Number of streams in event:", event.streams.length);
+     if (event.streams && event.streams[0]) {
+    serverVideoElement.value.srcObject = event.streams[0];
+  }
+  })
 }
 async function GetClients() {
   wsSignalingConn.send(JSON.stringify({ type: 'get_clients'}));
@@ -88,7 +110,7 @@ async function GetClients() {
 //function responsible for fetching user devises such as microphone and camera
 async function GetUserMedia() {
   try {
-    localClientStream.value = await navigator.mediaDevices.getUserMedia({ video: true })
+    localClientStream.value = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
 
     if (clientVideoElement.value) {
       clientVideoElement.value.srcObject = localClientStream.value
@@ -110,6 +132,10 @@ async function ConnectToVoice(){
     }catch(err){
         alert(err)
     }
+}
+async function sendAnswer(){
+  console.log("answer sended")
+  wsSignalingConn.send(JSON.stringify({type: 'conn_answer', payload: answer.value}))
 }
 async function sendOffer(){
     console.log("sending offer");

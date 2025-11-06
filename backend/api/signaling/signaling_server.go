@@ -30,7 +30,6 @@ func AcceptConnection() http.Handler {
 			user_id:    user_id,
 			ws_conn:    client_conn,
 			is_ws_conn: false,
-			RTCcons:    make(map[string]*webrtc.PeerConnection),
 		}
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
@@ -72,7 +71,12 @@ func AcceptConnection() http.Handler {
 			case "conn_offer":
 				var offer webrtc.SessionDescription
 				json.Unmarshal(signalMsg.Payload, &offer)
-				handleClientOffer(offer, user_id, &client)
+				handleClientOffer(offer, channel_id, &client)
+			case "conn_answer":
+				var answer webrtc.SessionDescription
+				json.Unmarshal(signalMsg.Payload, &answer)
+				client.PCconn.SetRemoteDescription(answer)
+				fmt.Println("remote discription set")
 			}
 
 		}

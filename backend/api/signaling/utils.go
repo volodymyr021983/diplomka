@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 
+	//"fmt"
+
 	"github.com/coder/websocket"
-	"github.com/pion/webrtc/v3"
+	//"github.com/pion/webrtc/v3"
 )
 
 func MarshalSignalingMsg(msgType string, user_id *string, payload interface{}) (*[]byte, error) {
@@ -51,22 +53,37 @@ func (channel *Channel) addUser(client *Client) error {
 	return nil
 }
 
+/*
 // add peer connection to the map of peer connections
 // This peer connections represent another user peer conns
 // for example if user connect to the channel server create new peer connections from every existing user in this channel
 // to stream their streams to the new user
-func (client *Client) addPeerConnection(peerConnection *webrtc.PeerConnection, peerKey string) error {
-	client.mu.Lock()
-	defer client.mu.Unlock()
-	serverPeerConnection := client.RTCcons[peerKey]
-	if peerKey == "server" && serverPeerConnection == nil {
-		client.RTCcons = make(map[string]*webrtc.PeerConnection)
+
+	func (client *Client) addPeerConnection(peerConnection *webrtc.PeerConnection, peerKey string) error {
+		client.mu.Lock()
+		defer client.mu.Unlock()
+		serverPeerConnection := client.RTCcons[peerKey]
+		/*
+		if peerKey == "server" && serverPeerConnection == nil {
+			client.RTCcons = make(map[string]*webrtc.PeerConnection)
+		}
+
+		if serverPeerConnection != nil {
+			//it is needs to be finalized. If user already have a conn from another user
+			//for example if user already present in voice chan and try to connect to another voice chan
+			return fmt.Errorf("this user: %s already have connection", peerKey)
+		}
+		client.RTCcons[peerKey] = peerConnection
+		return nil
 	}
-	if serverPeerConnection != nil {
-		//it is needs to be finalized. If user already have a conn from another user
-		//for example if user already present in voice chan and try to connect to another voice chan
-		return fmt.Errorf("this user: %s already have connection", peerKey)
+*/
+func (existingChan *ExistingChannels) getChannelById(channel_id string) (*Channel, error) {
+	existingChan.mu.Lock()
+	defer existingChan.mu.Unlock()
+	channel := existingChan.channels[channel_id]
+	fmt.Println(channel_id)
+	if channel == nil {
+		return nil, errors.New("channel not found")
 	}
-	client.RTCcons[peerKey] = peerConnection
-	return nil
+	return channel, nil
 }

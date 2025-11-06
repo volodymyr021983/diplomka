@@ -6,9 +6,10 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func handleClientOffer(offer webrtc.SessionDescription, peerKey string, client *Client) {
+func handleClientOffer(offer webrtc.SessionDescription, channel_id string, client *Client) {
 
 	serverPeerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+
 	if err != nil {
 		fmt.Println("error while creating new peer connection")
 		return
@@ -18,13 +19,43 @@ func handleClientOffer(offer webrtc.SessionDescription, peerKey string, client *
 		fmt.Println("error while setting remote description")
 		return
 	}
-	err = client.addPeerConnection(serverPeerConnection, peerKey)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+	client.PCconn = serverPeerConnection
+	serverPeerConnection.OnNegotiationNeeded(func() {
+		offer, err := serverPeerConnection.CreateOffer(&webrtc.OfferOptions{})
+		if err != nil {
+			fmt.Println("error during offer creation")
+			return
+		}
+		err = serverPeerConnection.SetLocalDescription(offer)
+		if err != nil {
+			fmt.Println("error during setting local description")
+			return
+		}
+		signalMsg, err := MarshalSignalingMsg("conn_offer", nil, offer)
+		if err != nil {
+			fmt.Println("error during marshaling offer")
+			return
+		}
+		sendSignalMsg(signalMsg, client)
+		fmt.Println("negotiation nedded")
+	})
 	serverPeerConnection.OnTrack(func(remote *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		fmt.Println("track arrives from the client")
+		fmt.Println("track arrives from the client start to creating offers")
+		clientChannel, err := existingChannels.getChannelById(channel_id)
+		if err != nil {
+			fmt.Println("error during finding channel")
+			return
+		}
+		clientChannel.mu.Lock()
+
+		forwarder := NewTrackForwarder(remote)
+		clientChannel.remoteTrackForwarders[remote.ID()] = forwarder
+		for _, user := range clientChannel.users {
+			user.mu.Lock()
+			forwarder.AddSubscriber(user.PCconn)
+			user.mu.Unlock()
+		}
+		clientChannel.mu.Unlock()
 	})
 	serverAnswer, err := serverPeerConnection.CreateAnswer(&webrtc.AnswerOptions{})
 	if err != nil {

@@ -7,6 +7,5 @@ import (
 func AddIceCandidate(iceCandidate *webrtc.ICECandidateInit, candidate_userid string, client *Client) {
 	client.mu.Lock()
 	defer client.mu.Unlock()
-	conn := client.RTCcons[candidate_userid]
-	conn.AddICECandidate(*iceCandidate)
+	client.PCconn.AddICECandidate(*iceCandidate)
 }
