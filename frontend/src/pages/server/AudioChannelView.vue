@@ -5,6 +5,8 @@
 
 <button @click="ConnectToVoice">CONNECT</button>
 <button @click="GetClients">GETCLIENTS</button>
+<button @click="Disconnect">DISCONNECT</button>
+
 
 </template>
 
@@ -92,6 +94,9 @@ async function CreatePeerConnection(){
   })
   PeerConnection.value.addEventListener("connectionstatechange", (event)=>{
     console.log(`connection state change: ${PeerConnection.value.connectionState}`)
+    if(PeerConnection.value.connectionState == 'disconnected'){
+      PeerConnection.value.close()
+    }
   })
   PeerConnection.value.addEventListener("negotiationneeded", (event)=>{
     console.log(`negotiation needed`)
@@ -144,6 +149,11 @@ async function sendOffer(){
 async function sendJoinRequest(){
   console.log("Sending join_room request");
     wsSignalingConn.send(JSON.stringify({ type: 'join_channel'}));
+}
+async function Disconnect(){
+  if(PeerConnection.value != null){
+  wsSignalingConn.send(JSON.stringify({type: 'disconnect_channel'}));
+  }
 }
 </script>
 

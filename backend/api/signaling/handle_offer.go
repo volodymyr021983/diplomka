@@ -46,16 +46,22 @@ func handleClientOffer(offer webrtc.SessionDescription, channel_id string, clien
 			fmt.Println("error during finding channel")
 			return
 		}
-		clientChannel.mu.Lock()
 
+		clientChannel.mu.Lock()
 		forwarder := NewTrackForwarder(remote)
 		clientChannel.remoteTrackForwarders[remote.ID()] = forwarder
+
+		client.mu.Lock()
+		client.RemoteTrackIds[remote.ID()] = remote.ID()
+		client.mu.Unlock()
+
 		for _, user := range clientChannel.users {
 			user.mu.Lock()
 			forwarder.AddSubscriber(user.PCconn)
 			user.mu.Unlock()
 		}
 		clientChannel.mu.Unlock()
+
 	})
 	serverAnswer, err := serverPeerConnection.CreateAnswer(&webrtc.AnswerOptions{})
 	if err != nil {

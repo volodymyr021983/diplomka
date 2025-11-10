@@ -13,11 +13,13 @@ type ExistingChannels struct {
 	mu       sync.Mutex
 }
 type Client struct {
-	user_id    string
-	ws_conn    *websocket.Conn
-	is_ws_conn bool
-	PCconn     *webrtc.PeerConnection
-	mu         sync.Mutex
+	user_id        string
+	ws_conn        *websocket.Conn
+	is_ws_conn     bool
+	PCconn         *webrtc.PeerConnection
+	ConnToChan     *Channel
+	RemoteTrackIds map[string]string
+	mu             sync.Mutex
 }
 type trackForwarder struct {
 	remoteTrack *webrtc.TrackRemote

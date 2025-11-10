@@ -21,7 +21,9 @@ func JoinRoom(channel_id string, client *Client) {
 			remoteTrackForwarders: make(map[string]*trackForwarder),
 		}
 		existingChannels.channels[channel_id] = channel
+
 	}
+	client.ConnToChan = channel
 	err := channel.addUser(client)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -95,10 +97,12 @@ func (tf *trackForwarder) AddSubscriber(PeerConnection *webrtc.PeerConnection) {
 	)
 	if err != nil {
 		fmt.Println("error during creation of local track")
+		return
 	}
 	_, err = PeerConnection.AddTrack(localTrack)
 	if err != nil {
-
+		fmt.Println("error during adding local track")
+		return
 	}
 	/*
 		go func() {
@@ -121,4 +125,38 @@ func (tf *trackForwarder) AddSubscriber(PeerConnection *webrtc.PeerConnection) {
 	tf.localTracks = append(tf.localTracks, localTrack)
 	fmt.Printf("Added subscriber. Track %s now has %d subscribers.\n",
 		tf.remoteTrack.ID(), len(tf.localTracks))
+}
+
+func (client *Client) DisconnectRTC() {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	if client.PCconn != nil {
+		fmt.Println("PEER conn closed")
+		client.PCconn.Close()
+	}
+	if client.ConnToChan != nil {
+		client.ConnToChan.DisconnectUser(client.user_id, &client.RemoteTrackIds)
+		client.ConnToChan = nil
+	}
+}
+func (channel *Channel) DisconnectUser(user_id string, RemoteTrackIds *map[string]string) {
+	channel.mu.Lock()
+	defer channel.mu.Unlock()
+	fmt.Printf("track forwarder in rooms: %d \n", len(channel.remoteTrackForwarders))
+	for _, remoteId := range *RemoteTrackIds {
+		delete(channel.remoteTrackForwarders, remoteId)
+		fmt.Printf("track forwarder %s deleted \n", remoteId)
+		fmt.Printf("track forwarder in rooms: %d \n", len(channel.remoteTrackForwarders))
+	}
+	user := channel.users[user_id]
+	user.RemoteTrackIds = make(map[string]string)
+	fmt.Println("new track forwarder in users")
+	delete(channel.users, user_id)
+	fmt.Println("User disconnected")
+	if len(channel.users) == 0 {
+		existingChannels.mu.Lock()
+		delete(existingChannels.channels, channel.channel_id)
+		existingChannels.mu.Unlock()
+		fmt.Println("Channel deleted")
+	}
 }

@@ -25,11 +25,12 @@ func AcceptConnection() http.Handler {
 		sessionContainer := session.GetSessionFromRequestContext(r.Context())
 		user_id := sessionContainer.GetUserID()
 		channel_id := r.PathValue("channel_id")
-
+		fmt.Println("New client created!")
 		client := Client{
-			user_id:    user_id,
-			ws_conn:    client_conn,
-			is_ws_conn: false,
+			user_id:        user_id,
+			ws_conn:        client_conn,
+			is_ws_conn:     false,
+			RemoteTrackIds: make(map[string]string),
 		}
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
@@ -47,7 +48,11 @@ func AcceptConnection() http.Handler {
 
 			_, msgByte, err := client.ws_conn.Read(derCtx)
 			if err != nil {
-				fmt.Println(err.Error())
+				fmt.Println("error in reader")
+				if client.ConnToChan != nil {
+					client.DisconnectRTC()
+					fmt.Println("Conn exists disconnecting!")
+				}
 				return
 			}
 			signalMsg, err := UnmarshalSignalMsg(msgByte)
@@ -77,8 +82,13 @@ func AcceptConnection() http.Handler {
 				json.Unmarshal(signalMsg.Payload, &answer)
 				client.PCconn.SetRemoteDescription(answer)
 				fmt.Println("remote discription set")
+			case "disconnect_channel":
+				if client.ConnToChan != nil {
+					client.DisconnectRTC()
+				} else {
+					fmt.Println("User not connected to channel")
+				}
 			}
-
 		}
 	})
 }
