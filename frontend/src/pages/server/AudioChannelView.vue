@@ -1,8 +1,7 @@
 <template>
 
-<video ref="clientVideoElement" autoplay controls width="320" height="240"></video>
-<video ref="serverVideoElement" autoplay controls width="320" height="240"></video>
-
+<video ref="clientVideoElement" autoplay muted controls width="320" height="240"></video>
+<div id="container"></div>
 <button @click="ConnectToVoice">CONNECT</button>
 <button @click="GetClients">GETCLIENTS</button>
 <button @click="Disconnect">DISCONNECT</button>
@@ -28,7 +27,7 @@ const userId = ref('')
 const PeerConnection = ref(null)
 const offer = ref(null)
 const answer = ref(null)
-const channelPeerConnections = new Map()
+const channelTracksElements = new Map()
 
 const wsSignalingConn = new WebSocket(`${import.meta.env.VITE_WSS_API_URL}/api/signaling/${serverID}/${channelID}`)
 //very important listener where code will process the messages from signaling server as offer answer etc
@@ -44,12 +43,7 @@ wsSignalingConn.addEventListener("message", async (event) =>{
       if(msg.payload != null){
       const arrivedUserId = msg.userid
       console.log("ice candidate from:", arrivedUserId)
-      if (channelPeerConnections.has(arrivedUserId)) {
-        const pc = channelPeerConnections.get(arrivedUserId);
-        await pc.addIceCandidate(msg.payload);
-      } else {
-        console.log("not found PC for this candidate")
-      }        
+        await PeerConnection.value.addIceCandidate(msg.payload);   
     }
       break;
     case "conn_answer":
@@ -79,8 +73,6 @@ async function CreatePeerConnection(){
   }]})
   await GetUserMedia()
 
-  channelPeerConnections.set(userId.value, PeerConnection.value)
-
   localClientStream.value.getTracks().forEach(track =>{
     PeerConnection.value.addTrack(track, localClientStream.value)
   })
@@ -104,9 +96,16 @@ async function CreatePeerConnection(){
   PeerConnection.value.addEventListener("track", (event) =>{
     console.log("track arrived")
      console.log("Number of streams in event:", event.streams.length);
-     if (event.streams && event.streams[0]) {
-    serverVideoElement.value.srcObject = event.streams[0];
-  }
+     event.streams.forEach(stream =>{
+      const video = document.createElement('video')
+        video.setAttribute('autoplay', '');   // или video.autoplay = true;
+        video.setAttribute('controls', '');
+        video.width = 320;
+        video.height = 240;
+        video.srcObject = stream
+        document.getElementById('container').appendChild(video);
+        channelTracksElements.set(stream, video)
+     })
   })
 }
 async function GetClients() {
@@ -115,7 +114,7 @@ async function GetClients() {
 //function responsible for fetching user devises such as microphone and camera
 async function GetUserMedia() {
   try {
-    localClientStream.value = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    localClientStream.value = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
 
     if (clientVideoElement.value) {
       clientVideoElement.value.srcObject = localClientStream.value
@@ -132,8 +131,10 @@ async function ConnectToVoice(){
     await CreatePeerConnection()
        offer.value = await PeerConnection.value.createOffer()
        await PeerConnection.value.setLocalDescription(offer.value)
-       sendOffer()
-        sendJoinRequest();
+       await sendJoinRequest(); 
+       await sendOffer()
+       
+
     }catch(err){
         alert(err)
     }
@@ -154,6 +155,9 @@ async function Disconnect(){
   if(PeerConnection.value != null){
   wsSignalingConn.send(JSON.stringify({type: 'disconnect_channel'}));
   }
+}
+async function CreateVideoElement(){
+  const newVid = document.createElement("video")
 }
 </script>
 

@@ -14,6 +14,11 @@ func handleClientOffer(offer webrtc.SessionDescription, channel_id string, clien
 		fmt.Println("error while creating new peer connection")
 		return
 	}
+	clientChannel, err := existingChannels.getChannelById(channel_id)
+	if err != nil {
+		fmt.Println("error during finding channel")
+		return
+	}
 	err = serverPeerConnection.SetRemoteDescription(offer)
 	if err != nil {
 		fmt.Println("error while setting remote description")
@@ -41,13 +46,11 @@ func handleClientOffer(offer webrtc.SessionDescription, channel_id string, clien
 	})
 	serverPeerConnection.OnTrack(func(remote *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		fmt.Println("track arrives from the client start to creating offers")
-		clientChannel, err := existingChannels.getChannelById(channel_id)
-		if err != nil {
-			fmt.Println("error during finding channel")
-			return
+		clientChannel.mu.Lock()
+		for _, forwarder := range clientChannel.remoteTrackForwarders {
+			forwarder.AddSubscriber(serverPeerConnection)
 		}
 
-		clientChannel.mu.Lock()
 		forwarder := NewTrackForwarder(remote)
 		clientChannel.remoteTrackForwarders[remote.ID()] = forwarder
 
@@ -57,7 +60,9 @@ func handleClientOffer(offer webrtc.SessionDescription, channel_id string, clien
 
 		for _, user := range clientChannel.users {
 			user.mu.Lock()
-			forwarder.AddSubscriber(user.PCconn)
+			if user.user_id != client.user_id {
+				forwarder.AddSubscriber(user.PCconn)
+			}
 			user.mu.Unlock()
 		}
 		clientChannel.mu.Unlock()
@@ -68,6 +73,7 @@ func handleClientOffer(offer webrtc.SessionDescription, channel_id string, clien
 		fmt.Println("error during answer creation")
 		return
 	}
+
 	serverPeerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		signalMsg, err := MarshalSignalingMsg("new_ice_candidate", &client.user_id, candidate)
 		if err != nil {
